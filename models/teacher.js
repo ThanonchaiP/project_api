@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const mongoosePaginate = require('mongoose-paginate-v2');
 const bcrypt = require('bcryptjs');
 const schema = mongoose.Schema;
 
@@ -13,7 +14,9 @@ const Schema = schema(
     password: { type: String, required: true },
     email: { type: String },
     status: { type: String },
-    photo: { type: String, default: "nopic.png" },
+    advisor: { type: String },
+    photo: { type: String },
+    photo_url:  {type:String},
   },
   {
     // toJSON:{virtuals:true},
@@ -40,7 +43,7 @@ Schema.methods.decryptPassword = async function(password) {
   return isValid;
 }
 
-
+Schema.plugin(mongoosePaginate);
 const teacher = mongoose.model("Teacher", Schema);
 
 module.exports = teacher;

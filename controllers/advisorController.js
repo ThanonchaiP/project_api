@@ -1,21 +1,61 @@
 const Advisor = require("../models/advisor");
 const Teacher = require("../models/teacher");
-const Classroom = require("../models/classroom");
 
-//GET advisor
+//GET Advisor
 exports.index = async (req, res, next) => {
+  const { page, page_size } = req.query;
+  const myPage = page ? parseInt(page) : 1;
+  const myPageSize = page_size ? parseInt(page_size) : 15;
 
-  const resp = await Advisor.find({term:1})
-    .populate({
-      path: "classroom",
-      select: "class room",
-      options: { sort: { type: 1, class: 1, room: 1 } },
-    }) //เอา field classroom มาด้วย
-    .populate({
-      path: "teacher",
-      select: "firstname lastname",
-    }); //เอา field teacher มาด้วย
+  const resp = await Advisor.aggregate([
+    {
+      $lookup: {
+        from: "classrooms", //collection name
+        localField: "classroom", //field classroom in Advisor model
+        foreignField: "_id", // foreign in Classroom model
+        as: "Classroom",
+      },
+    },
+    {
+      $lookup: {
+        from: "teachers",
+        localField: "teacher",
+        foreignField: "_id",
+        as: "Teacher",
+      },
+    },
+    {
+      $project: {
+        //select and delete some field
+        "Teacher.username": 0,
+        "Teacher.password": 0,
+        "Teacher.status": 0,
+        "Teacher.photo": 0,
+      },
+    },
+    { $match: { academic_year: "2563", term: "1" } },
+    {
+      $sort: {
+        "Classroom.type": -1,
+        "Classroom.room": -1,
+      },
+    },
+  ]);
 
+  res.status(200).json({
+    data: resp,
+  });
+};
+
+//GET AdvisorId By Term
+exports.advisorIdWithTerm = async (req, res, next) => {
+  const { year, term, classroom_id } = req.body;
+
+  const resp = await Advisor.find({
+    term: term,
+    academic_year: year,
+    classroom: classroom_id,
+  });
   res.status(200).json({
     data: resp,
   });
@@ -25,10 +65,61 @@ exports.index = async (req, res, next) => {
 exports.advisorWithYear = async (req, res, next) => {
   const { year } = req.params;
 
-  const resp = await Advisor.find({ academic_year: year })
-    .sort({ _id: 1 })
-    .populate("classroom") //เอา field classroom มาด้วย
-    .populate("teacher", "_id firstname lastname"); //เอา field teacher มาด้วย
+  const resp = await Advisor.aggregate([
+    {
+      $lookup: {
+        from: "classrooms", //collection name
+        localField: "classroom", //field classroom in Advisor model
+        foreignField: "_id", // foreign in Classroom model
+        as: "Classroom",
+      },
+    },
+    {
+      $lookup: {
+        from: "teachers",
+        localField: "teacher",
+        foreignField: "_id",
+        as: "Teacher",
+      },
+    },
+    {
+      $project: {
+        //select and delete some field
+        "Teacher.username": 0,
+        "Teacher.password": 0,
+        "Teacher.status": 0,
+        "Teacher.photo": 0,
+      },
+    },
+    { $match: { academic_year: year, term: "1" } },
+    {
+      $sort: {
+        "Classroom.type": -1,
+        "Classroom.room": -1,
+      },
+    },
+  ]);
+  res.status(200).json({
+    data: resp,
+  });
+};
+
+//GET All Year
+exports.year = async (req, res, next) => {
+  const resp = await Advisor.aggregate([
+    { $group: { _id: "$academic_year" } },
+    {
+      $project: {
+        academic_year: 1,
+      },
+    },
+    {
+      $sort: {
+        _id: -1,
+      },
+    },
+  ]);
+
   res.status(200).json({
     data: resp,
   });
@@ -49,84 +140,14 @@ exports.getById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const admin = await Advisor.findById(id);
+    const data = await Advisor.findById(id);
 
-    if (!admin) {
+    if (!data) {
       throw new Error("ไม่พบข้อมูล");
     }
 
     res.status(200).json({
-      data: admin,
-    });
-  } catch (error) {
-    res.status(400).json({
-      error: "เกิดข้อผิดพลาด " + error.message,
-    });
-  }
-};
-
-//Inser admin
-exports.insert = async (req, res, next) => {
-  const { name, username, password, email, tel } = req.body;
-
-  let admin = new Advisor({
-    name: name,
-    username: username,
-    password: password,
-    email: email,
-    tel: tel,
-  });
-  await admin.save(); //save to db
-
-  res.status(201).json({
-    message: "Insert",
-  });
-};
-
-//Delete BY ID
-exports.delete = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-
-    const admin = await Advisor.findByIdAndDelete({ _id: id });
-
-    if (!admin) {
-      throw new Error("ไม่พบข้อมูล");
-    }
-
-    res.status(200).json({
-      message: "ลบข้อมูลเรียบร้อย",
-    });
-  } catch (error) {
-    res.status(400).json({
-      error: "เกิดข้อผิดพลาด " + error.message,
-    });
-  }
-};
-
-//Update admin
-exports.update = async (req, res, next) => {
-  try {
-    const { name, username, password, email, tel } = req.body;
-    const { id } = req.params;
-
-    console.log(name, id);
-
-    const admin = await Advisor.findByIdAndUpdate(id, {
-      name: name,
-      email: email,
-      tel: tel,
-    });
-
-    if (!admin) {
-      throw new Error("แก้ไขข้อมูลไม่สำเร็จ");
-    }
-
-    const resp = await Advisor.findById(id);
-
-    res.status(200).json({
-      data: resp,
-      message: "แก้ไขข้อมูลสำเร็จ",
+      data: data,
     });
   } catch (error) {
     res.status(400).json({
