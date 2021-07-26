@@ -144,9 +144,11 @@ exports.insert = async (req, res, next) => {
     teacher.tel = tel ? tel : undefined;
     teacher.advisor = `${level}/${room}`;
     teacher.status = "1";
-    teacher.photo= imgName ? imgName : "nopic.png",
-    teacher.photo_url = `${config.DOMAIN}/images/${imgName ? imgName : "nopic.png"}`,
-    await teacher.save(); //save to db
+    (teacher.photo = imgName ? imgName : "nopic.png"),
+      (teacher.photo_url = `${config.DOMAIN}/images/${
+        imgName ? imgName : "nopic.png"
+      }`),
+      await teacher.save(); //save to db
 
     const advisor = await Advisor.find({
       classroom: classroomId,
@@ -184,14 +186,23 @@ exports.delete = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const admin = await Teacher.findByIdAndDelete({ _id: id });
+    const teacher = await Teacher.findByIdAndDelete({ _id: id });
 
-    if (!admin) {
-      throw new Error("ไม่พบข้อมูล");
+    const advisor = await Advisor.find({ teacher: id });
+    if (advisor) {
+      advisor.forEach(async (a) => {
+        const update = await Advisor.findByIdAndUpdate(
+          { _id: a._id },
+          {
+            teacher: null,
+          }
+        );
+      });
     }
 
     res.status(200).json({
-      message: "ลบข้อมูลเรียบร้อย",
+      message: "ลบข้อมูลสำเร็จ",
+      // data: advisor,
     });
   } catch (error) {
     res.status(400).json({
