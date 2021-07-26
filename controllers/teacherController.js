@@ -2,7 +2,7 @@ const Teacher = require("../models/teacher");
 const Advisor = require("../models/advisor");
 const Classroom = require("../models/classroom");
 const config = require("../config/index");
-const saveImageToDisk = require("./FileUpload");
+const { saveImageToDisk } = require("./imageController");
 const e = require("express");
 //GET admin
 exports.index = async (req, res, next) => {
@@ -81,6 +81,26 @@ exports.getById = async (req, res, next) => {
     res.status(400).json({
       error: "เกิดข้อผิดพลาด " + error.message,
     });
+  }
+};
+
+//search teacher
+exports.searchTeacher = async (req, res, next) => {
+  try {
+    const { firstname, lastname } = req.body;
+
+    const teacher = await Teacher.find({
+      $or: [
+        { firstname: firstname && { $regex: firstname, $options: "i" } },
+        { lastname: lastname && { $regex: lastname, $options: "i" } },
+      ],
+    });
+
+    res.status(200).json({
+      data: teacher,
+    });
+  } catch (error) {
+    next(error); //to middleware error
   }
 };
 
@@ -244,14 +264,23 @@ exports.update = async (req, res, next) => {
       });
     }
 
+    let imgName = oldPhoto;
+    if (photo) {
+      if (oldPhoto !== "nopic.png" && oldPhoto !== "nopic.jpg") {
+        fs.unlinkSync(`${__dirname}/../public/images/${oldPhoto}`);
+      }
+      imgName = await saveImageToDisk(photo);
+    }
+
     const teacher = await Teacher.findByIdAndUpdate(id, {
       name_title: title,
       firstname: firstname,
       lastname: lastname,
       gender: gender,
-      tel: tel,
-      email: email,
-      photo: photo ? await saveImageToDisk(photo) : oldPhoto ? oldPhoto : null,
+      tel: tel ? tel : undefined,
+      email: email ? email : undefined,
+      photo: imgName,
+      photo_url: `${config.DOMAIN}/images/${imgName ? imgName : "nopic.jpg"}`,
     });
 
     if (teacher.nModified === 0) {

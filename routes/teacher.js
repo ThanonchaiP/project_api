@@ -1,22 +1,24 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 
-const teacherController = require('../controllers/teacherController');
+const teacherController = require("../controllers/teacherController");
 
 /* GET http://localhost:3200/teacher/ */
-router.get('/',teacherController.index);
+router.get("/", teacherController.index);
 
 /* GET http://localhost:3200/teacher/:id */
-router.get('/:id',teacherController.getById);
+router.get("/:id", teacherController.getById);
+
+/* GET http://localhost:3200/teacher/search */
+router.post("/search", teacherController.searchTeacher);
 
 /* POST http://localhost:3200/teacher/ */
-router.post('/',teacherController.insert);
+router.post("/", teacherController.insert);
 
 /* Delete http://localhost:3200/teacher/:id */
-router.delete('/:id',teacherController.delete);
+router.delete("/:id", teacherController.delete);
 
 /* Update http://localhost:3200/teacher/:id */
-router.put('/:id',teacherController.update);
-
+router.put("/:id", teacherController.update);
 
 module.exports = router;
